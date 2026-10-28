@@ -1,0 +1,957 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LOGICAL 3.5 - アルゴリズム研究室</title>
+<style>
+:root{color-scheme:dark;--bg:#10131a;--panel:#191e29;--panel2:#222b3b;--border:#354055;--text:#edf1fa;--muted:#a0acc0;--blue:#72a7ff;--green:#61d6a0;--red:#ff8585;--yellow:#f5ca70}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+button:hover{border-color:var(--blue)}
+button:disabled{opacity:.4;cursor:default}
+input,select,textarea{width:100%;min-width:0;background:#101722;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:9px}
+header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:23px;margin:0}h2{font-size:18px;margin:0 0 10px}h3{font-size:14px;margin:0 0 8px}
+small,.muted{color:var(--muted)}
+.layout{display:grid;grid-template-columns:225px minmax(0,1fr) 235px;gap:12px;padding:12px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:13px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.grow{flex:1}
+.modebar{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.modebar button.active,.stage-item.active{border-color:var(--blue);background:#293a55}
+.modebar button:last-child{grid-column:1/-1}
+.stage-list{display:flex;flex-direction:column;gap:5px;max-height:350px;overflow:auto}
+.stage-item{width:100%;text-align:left;font-size:13px}
+.stage-item.done{border-color:#347f63}
+.tag{display:inline-block;border:1px solid var(--border);border-radius:20px;padding:4px 9px;font-size:12px;color:var(--muted)}
+.block{background:#202838;border:1px solid var(--border);border-left:5px solid var(--blue);border-radius:9px;padding:10px;margin:8px 0}
+.block.SET{border-left-color:#c1a0ff}.block.IF,.block.ELSE{border-left-color:var(--yellow)}.block.FOR{border-left-color:var(--green)}.block.ADD{border-left-color:#e5a16f}
+.block-head{display:grid;grid-template-columns:minmax(120px,145px) minmax(0,1fr);gap:8px}
+.block label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+.block-tools{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.block-tools button{font-size:12px;padding:6px 8px}
+.suggestion-select{margin-top:5px;font-size:12px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0d121b;border:1px solid var(--border);border-radius:8px;padding:10px;margin:0;font-size:12px;min-height:40px}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.stat{background:#111722;border:1px solid var(--border);border-radius:8px;padding:9px}
+.stat strong{display:block;font-size:19px;margin-top:4px}
+#notice{padding:10px;border-radius:8px;background:#111722;border:1px solid var(--border);font-size:13px;white-space:pre-wrap;line-height:1.6}
+.success{color:var(--green)}.error{color:var(--red)}.warning{color:var(--yellow)}
+.help{font-size:12px;line-height:1.7;color:var(--muted)}
+#freeSettings,#debugSettings,#freeInputArea,#predictionView{display:none}
+.choice{display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:13px}
+.choice.selected{border-color:var(--blue);background:#293a55}
+.choice-letter{width:28px;height:28px;border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.choice.correct{border-color:var(--green);background:#18392f}
+.choice.wrong{border-color:var(--red);background:#3a2229}
+.question-code{font-size:14px;line-height:1.9}
+#predictionView{gap:12px}
+.progress-track{height:7px;background:#0d121b;border-radius:20px;overflow:hidden}
+#predictionProgressBar{height:100%;width:0;background:var(--blue);transition:width .2s}
+#developerPanel{margin-top:4px}
+#developerPanel h3{margin-top:4px}
+#developerToggle{white-space:nowrap}
+@media(max-width:1000px){.layout{grid-template-columns:210px minmax(0,1fr)}.right-panel{grid-column:1/-1}}
+@media(max-width:650px){.layout{grid-template-columns:1fr;padding:8px}.right-panel{grid-column:auto}.stage-list{max-height:230px}.block-head{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>LOGICAL <span style="color:var(--blue)">3.5</span></h1><small>アルゴリズム研究室</small></div>
+  <div class="row"><span class="tag" id="progressTag">0 / 70 クリア</span><button id="saveBtn">保存</button></div>
+</header>
+
+<div class="layout">
+<aside class="panel stack">
+  <h2>メニュー</h2>
+  <div class="modebar">
+    <button data-mode="stage" class="active">課題</button>
+    <button data-mode="free">自由研究</button>
+    <button data-mode="debug">バグ発見</button>
+    <button data-mode="predict">予測トレーニング</button>
+  </div>
+
+  <div id="stageNav" class="stack">
+    <h3>ステージ一覧</h3>
+    <select id="stageFilter">
+      <option value="all">すべての難易度</option>
+      <option value="1">基礎</option><option value="2">中級</option><option value="3">応用</option>
+    </select>
+    <div id="stageList" class="stage-list"></div>
+  </div>
+
+  <div id="freeSettings" class="stack">
+    <h3>自由研究の作品</h3>
+    <select id="projectSelect"></select>
+    <input id="projectName" placeholder="作品名">
+    <button id="newProjectBtn">新しい作品</button>
+    <button id="renameBtn">名前を変更</button>
+    <button id="duplicateBtn">作品を複製</button>
+    <button id="deleteProjectBtn">作品を削除</button>
+  </div>
+
+  <div id="debugSettings" class="stack">
+    <h3>バグ発見チャレンジ</h3>
+    <div id="debugList" class="stage-list"></div>
+  </div>
+
+  <div id="predictionMenu" class="stack" style="display:none">
+    <h3>予測問題の記録</h3>
+    <div class="stat"><small>正解数</small><strong id="predictionScore">0</strong></div>
+    <div class="stat"><small>連続正解</small><strong id="predictionCombo">0</strong></div>
+    <div class="stat"><small>回答済み問題</small><strong id="predictionAnsweredCount">0</strong></div>
+    <button id="resetPrediction">記録をリセット</button>
+  </div>
+
+  <hr>
+  <button id="resetProgressBtn">クリア記録を消去</button>
+  <small>作品・記録はブラウザに保存されます。</small>
+</aside>
+
+<main class="panel stack">
+  <div id="normalView" class="stack">
+    <div>
+      <div class="row"><span class="tag" id="modeTag">課題モード</span><span class="tag" id="levelTag">STAGE 1</span></div>
+      <h2 id="taskTitle" style="margin-top:10px">最大値を求めよう</h2>
+      <p id="taskDesc" class="muted"></p>
+    </div>
+
+    <div class="panel stack">
+      <h3>今回のデータ</h3><pre id="inputData"></pre>
+      <div id="freeInputArea" class="stack">
+        <label for="customData">研究用の数字（カンマ区切り）</label>
+        <textarea id="customData">4,9,2,7,5</textarea>
+        <button id="applyDataBtn">データを更新</button>
+      </div>
+    </div>
+
+    <!-- 追加：開発者デバッグパネル。初期状態では正解を隠す -->
+    <div class="panel stack">
+      <div class="row">
+        <strong class="grow">開発者デバッグ</strong>
+        <button id="developerToggle">正解を表示</button>
+      </div>
+      <div id="developerPanel" class="stack" style="display:none">
+        <p class="muted">開発・動作確認用です。通常の課題では閉じておけます。</p>
+        <h3>テストデータと期待される出力</h3>
+        <pre id="developerExpected"></pre>
+        <h3>参考プログラム</h3>
+        <pre id="developerExample"></pre>
+      </div>
+    </div>
+
+    <div class="row"><strong class="grow">プログラムを組み立てよう</strong><button id="clearBlocksBtn">全消去</button></div>
+    <div class="panel stack">
+      <label for="newBlockType">追加する命令</label>
+      <div class="row">
+        <select id="newBlockType" class="grow">
+          <option value="SET">変数に値を入れる</option>
+          <option value="IF">もし条件に合えば</option>
+          <option value="ELSE">そうでなければ</option>
+          <option value="FOR">データを1つずつ調べる</option>
+          <option value="ADD">リストに値を追加する</option>
+          <option value="OUTPUT">結果を表示する</option>
+        </select>
+        <button id="addBlockBtn">追加</button>
+      </div>
+      <small>変数名やリスト名は候補から選べます。直接入力も可能です。</small>
+    </div>
+
+    <div id="blockArea"></div>
+    <div class="row"><button id="runBtn">▶ 実行して答え合わせ</button><button id="resetRunBtn">結果を消す</button></div>
+    <div id="notice">ブロックを追加して、プログラムを作ってみましょう。</div>
+    <div class="panel stack"><h3>出力</h3><pre id="output">まだ実行していません。</pre></div>
+
+    <div class="panel stack">
+      <h3>テスト結果</h3>
+      <div class="statgrid">
+        <div class="stat"><small>成功したテスト</small><strong id="passedTests">0 / 0</strong></div>
+        <div class="stat"><small>実行命令数</small><strong id="stepCount">0</strong></div>
+        <div class="stat"><small>正答率</small><strong id="accuracy">—</strong></div>
+        <div class="stat"><small>評価</small><strong id="rank">未評価</strong></div>
+      </div>
+      <pre id="testDetails">実行すると結果が表示されます。</pre>
+    </div>
+  </div>
+
+  <div id="predictionView" class="stack">
+    <div class="row">
+      <span class="tag">予測トレーニング</span>
+      <span class="tag" id="predictLevel">基礎</span>
+      <span class="tag" id="predictNumber">問題 1</span>
+    </div>
+    <div class="progress-track"><div id="predictionProgressBar"></div></div>
+    <h2 id="predictTitle">実行結果を予測しよう</h2>
+    <p id="predictDesc" class="muted"></p>
+    <div class="panel stack"><h3>プログラム</h3><pre id="predictCode" class="question-code"></pre></div>
+    <h3 id="predictQuestion">どんな結果になる？</h3>
+    <div id="predictChoices" class="stack"></div>
+    <button id="checkPrediction" disabled>答え合わせ</button>
+    <div id="predictFeedback" class="panel stack" style="display:none">
+      <h3 id="feedbackTitle">解説</h3>
+      <p id="feedbackText"></p>
+      <pre id="feedbackTrace"></pre>
+    </div>
+    <div class="row">
+      <button id="nextPrediction" class="grow" disabled>次の問題へ →</button>
+      <button id="retryPrediction">選び直す</button>
+    </div>
+  </div>
+</main>
+
+<aside class="panel stack right-panel">
+  <h2>実行モニター</h2>
+  <div class="statgrid">
+    <div class="stat"><small>変数の数</small><strong id="variableCount">0</strong></div>
+    <div class="stat"><small>出力数</small><strong id="outputCount">0</strong></div>
+  </div>
+  <h3>変数の中身</h3><pre id="variables">実行すると表示されます。</pre>
+  <h3>実行記録</h3><pre id="trace">実行すると表示されます。</pre>
+  <hr>
+  <h3>予測のコツ</h3>
+  <div class="help">
+    1. 最初の変数の値を確認する。<br><br>
+    2. 命令を上から順に追う。<br><br>
+    3. 繰り返しは1回ずつ数える。<br><br>
+    4. 条件が正しいか、毎回確かめる。<br><br>
+    5. 最後に出力される値を確認する。<br><br>
+    6. 正解しても、別の入力で失敗しないか考える。
+  </div>
+</aside>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const clone=x=>JSON.parse(JSON.stringify(x));
+const block=(type,name,expr,indent=0)=>({type,name,expr,indent});
+const typeNames={
+ SET:"変数に値を入れる",IF:"もし条件に合えば",ELSE:"そうでなければ",
+ FOR:"データを1つずつ調べる",ADD:"リストに値を追加する",OUTPUT:"結果を表示する"
+};
+const typeHelp={
+ SET:"保存する名前と値を入力します。例：合計 / 0",
+ IF:"条件が正しい場合だけ、中の命令を実行します。例：数 > 5",
+ ELSE:"直前の条件が正しくないときに実行します。",
+ FOR:"リストを順番に調べます。例：数 / data",
+ ADD:"リストの最後に値を追加します。",
+ OUTPUT:"表示したい値や計算式を入力します。"
+};
+
+const dataSets=[[4,9,2,7,5],[12,3,18,6,10],[-4,8,-2,11,0],[7,7,2,7,4],[15,-3,6,0,9]];
+const families=[
+ ["最大値","リストで一番大きい数を求めよう。","max"],
+ ["最小値","リストで一番小さい数を求めよう。","min"],
+ ["合計","すべての数を足そう。","sum"],
+ ["平均","平均を求めよう。","avg"],
+ ["偶数の個数","偶数がいくつあるか数えよう。","evencount"],
+ ["奇数の個数","奇数がいくつあるか数えよう。","oddcount"],
+ ["正の数","正の数だけを取り出そう。","positive"],
+ ["負の数","負の数だけを取り出そう。","negative"],
+ ["5以上の数","5以上の数を取り出そう。","gte5"],
+ ["目標値の個数","目標値がいくつあるか数えよう。","counttarget"],
+ ["目標値を探す","目標値が含まれるか調べよう。","contains"],
+ ["最初の偶数","最初の偶数を出力しよう。","firsteven"],
+ ["逆順","逆の順番にしよう。","reverse"],
+ ["重複を除く","同じ数字を一つにまとめよう。","unique"],
+ ["小さい順","小さい順に並べよう。","sort"],
+ ["2倍","各数を2倍にしよう。","double"],
+ ["2乗","各数を2乗しよう。","square"],
+ ["絶対値","各数の絶対値を求めよう。","abs"],
+ ["最大値の位置","最大値の位置を求めよう。","maxindex"],
+ ["2番目に大きい数","異なる数の2番目を求めよう。","secondmax"]
+];
+const targetFunctions={
+ max:d=>d.length?Math.max(...d):null,
+ min:d=>d.length?Math.min(...d):null,
+ sum:d=>d.reduce((a,b)=>a+b,0),
+ avg:d=>d.length?d.reduce((a,b)=>a+b,0)/d.length:null,
+ evencount:d=>d.filter(x=>x%2===0).length,
+ oddcount:d=>d.filter(x=>x%2!==0).length,
+ positive:d=>d.filter(x=>x>0),
+ negative:d=>d.filter(x=>x<0),
+ gte5:d=>d.filter(x=>x>=5),
+ counttarget:(d,t)=>d.filter(x=>x===t).length,
+ contains:(d,t)=>d.includes(t),
+ firsteven:d=>{const x=d.find(x=>x%2===0);return x===undefined?null:x},
+ reverse:d=>[...d].reverse(),
+ unique:d=>[...new Set(d)],
+ sort:d=>[...d].sort((a,b)=>a-b),
+ double:d=>d.map(x=>x*2),
+ square:d=>d.map(x=>x*x),
+ abs:d=>d.map(Math.abs),
+ maxindex:d=>d.length?d.indexOf(Math.max(...d)):-1,
+ secondmax:d=>{const a=[...new Set(d)].sort((x,y)=>y-x);return a.length>1?a[1]:null}
+};
+const stages=[];
+families.forEach((f,i)=>{
+ for(let v=0;v<3;v++){
+  const id=i*3+v+1;
+  stages.push({
+   id,name:String(id).padStart(2,"0")+" · "+f[0],desc:f[1],kind:f[2],
+   data:[...dataSets[(i+v)%5]],target:[9,6,7,2,0][(i+v)%5],
+   difficulty:id<=20?1:id<=40?2:3
+  });
+ }
+});
+const extras=[
+ ["3の倍数","3の倍数だけを取り出そう。",d=>d.filter(x=>x%3===0)],
+ ["範囲内の数","0以上10以下の数を集めよう。",d=>d.filter(x=>x>=0&&x<=10)],
+ ["隣り合う差","隣り合う数の差を求めよう。",d=>d.slice(1).map((x,i)=>x-d[i])],
+ ["累積合計","左から順に足した合計を作ろう。",d=>{let s=0;return d.map(x=>s+=x)}],
+ ["文字に変換","各数字を文字に変えよう。",d=>d.map(String)],
+ ["重複の判定","同じ数があるか調べよう。",d=>new Set(d).size!==d.length],
+ ["すべて正の数？","すべて正か調べよう。",d=>d.every(x=>x>0)],
+ ["負の数がある？","負の数があるか調べよう。",d=>d.some(x=>x<0)],
+ ["最大と最小の差","最大値と最小値の差を求めよう。",d=>d.length?Math.max(...d)-Math.min(...d):null],
+ ["中央値","中央の数を求めよう。",d=>{const a=[...d].sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:null}]
+];
+extras.forEach((x,i)=>stages.push({
+ id:stages.length+1,name:String(stages.length+1).padStart(2,"0")+" · "+x[0],
+ desc:x[1],kind:"extra"+i,data:[...dataSets[i%5]],target:0,difficulty:3,extraFn:x[2]
+}));
+
+const bugs=[
+ {name:"合計の初期値",desc:"合計の初期値を確認しよう。",kind:"sum",blocks:[block("SET","合計","1"),block("FOR","数","data"),block("SET","合計","合計 + 数",1),block("OUTPUT","","合計")]},
+ {name:"偶数の条件",desc:"偶数を集めたいのに、条件が反対です。",kind:"evens",blocks:[block("SET","結果","[]"),block("FOR","数","data"),block("IF","","数 % 2 == 1",1),block("ADD","結果","数",2),block("OUTPUT","","結果")]},
+ {name:"最大値の初期値",desc:"負の数だけでも正しく動くように直そう。",kind:"max",blocks:[block("SET","最大","0"),block("FOR","数","data"),block("IF","","数 > 最大",1),block("SET","最大","数",2),block("OUTPUT","","最大")]},
+ {name:"繰り返しの対象",desc:"リスト全体を調べよう。",kind:"sum",blocks:[block("SET","合計","0"),block("FOR","数","data[0]"),block("SET","合計","合計 + 数",1),block("OUTPUT","","合計")]},
+ {name:"5以上の数",desc:"5も含める条件に直そう。",kind:"gte5",blocks:[block("SET","結果","[]"),block("FOR","数","data"),block("IF","","数 > 5",1),block("ADD","結果","数",2),block("OUTPUT","","結果")]},
+ {name:"逆順",desc:"逆順にする処理を考えよう。",kind:"reverse",blocks:[block("SET","結果","[]"),block("FOR","数","data"),block("ADD","結果","数",1),block("OUTPUT","","結果")]}
+];
+
+/* 予測トレーニング：基礎からアルゴリズム設計まで */
+const predictionQuestions=[
+ {level:1,title:"変数の値",desc:"変数に値を入れる命令を追ってみよう。",code:"A = 3\nA = A + 4\nAを表示する",question:"最後に表示される数は？",choices:["3","4","7","12"],answer:2,explain:"最初にAは3。次の命令で今のAに4を足すので7になります。",trace:"A = 3\nA = 3 + 4 = 7\n出力：7"},
+ {level:1,title:"命令の順番",desc:"上から順に実行することを意識しよう。",code:"A = 5\nB = A + 2\nA = 1\nBを表示する",question:"表示される数は？",choices:["1","3","5","7"],answer:3,explain:"Bに値を入れた時点でAの5に2を足してBは7になります。その後Aを1に変えてもBは変わりません。",trace:"A = 5\nB = 5 + 2 = 7\nA = 1\n出力：7"},
+ {level:1,title:"繰り返し",desc:"同じ命令を3回実行しよう。",code:"合計 = 0\n3回繰り返す：\n  合計 = 合計 + 2\n合計を表示する",question:"最後に表示される数は？",choices:["2","4","6","8"],answer:2,explain:"1回目は2、2回目は4、3回目は6。合計は6になります。",trace:"開始：0\n1回目：2\n2回目：4\n3回目：6\n出力：6"},
+ {level:1,title:"条件分岐",desc:"条件が正しいかどうかで結果が変わるよ。",code:"数 = 8\nもし 数 > 5 なら：\n  結果 = 1\nそうでなければ：\n  結果 = 0\n結果を表示する",question:"表示される数は？",choices:["0","1","5","8"],answer:1,explain:"8は5より大きいので条件は正しい。結果に1が入ります。",trace:"8 > 5 → 正しい\n結果 = 1\n出力：1"},
+ {level:1,title:"条件の境界",desc:"「以上」と「より大きい」の違いに注意しよう。",code:"数 = 5\nもし 数 > 5 なら：\n  結果 = 1\nそうでなければ：\n  結果 = 0",question:"結果に入る数は？",choices:["0","1","5","6"],answer:0,explain:"5は5より大きくありません。条件が正しくないので結果は0です。「5以上」なら5も含まれます。",trace:"5 > 5 → 偽\n結果 = 0"},
+ {level:2,title:"繰り返しと合計",desc:"毎回、変数がどう変わるか追跡しよう。",code:"合計 = 1\ndata = [2, 4, 3]\n順番に取り出した数を合計に足す\n合計を表示する",question:"最後の合計は？",choices:["9","10","11","12"],answer:1,explain:"最初は1。2を足して3、4を足して7、3を足して10になります。",trace:"初期値：1\n1回目：1 + 2 = 3\n2回目：3 + 4 = 7\n3回目：7 + 3 = 10\n出力：10"},
+ {level:2,title:"偶数の条件",desc:"余りを使って偶数を見分けよう。",code:"数 = 7\nもし 数 % 2 == 0 なら：\n  結果 = \"偶数\"\nそうでなければ：\n  結果 = \"奇数\"",question:"結果は？",choices:["偶数","奇数","0","条件エラー"],answer:1,explain:"7を2で割った余りは1です。余りが0ではないので奇数です。",trace:"7 % 2 = 1\n1 == 0 → 偽\n結果：奇数"},
+ {level:2,title:"リストの位置",desc:"リストの番号は0から始まることに注意。",code:"data = [10, 20, 30, 40]\ndata[0]を表示する",question:"表示される数は？",choices:["0","10","20","40"],answer:1,explain:"リストの最初の要素は番号0です。data[0]は10を指します。",trace:"data[0] = 10\n出力：10"},
+ {level:2,title:"条件と繰り返し",desc:"条件に合う数だけを数えよう。",code:"個数 = 0\ndata = [2, 7, 4, 9]\n数を順に調べ、数 > 5 なら個数を1増やす",question:"最後の個数は？",choices:["1","2","3","4"],answer:1,explain:"5より大きいのは7と9の2つです。したがって個数は2です。",trace:"2 → 対象外\n7 → 個数1\n4 → 対象外\n9 → 個数2"},
+ {level:2,title:"リストへの追加",desc:"条件に合った数だけが追加されるよ。",code:"結果 = []\ndata = [1, 4, 6]\n数を順に調べ、数 > 3 なら結果に追加する",question:"結果のリストは？",choices:["[1, 4, 6]","[1]","[4, 6]","[3, 4, 6]"],answer:2,explain:"1は条件に合いません。4と6は3より大きいので追加されます。",trace:"1 → 追加しない\n4 → 追加\n6 → 追加\n結果：[4, 6]"},
+ {level:3,title:"バグを見抜く",desc:"特別なデータで失敗するプログラムを見つけよう。",code:"最大 = 0\ndata = [-8, -3, -12]\n各数について、数 > 最大 なら最大を更新する",question:"この方法の問題点は？",choices:["繰り返しが多すぎる","負の数だけのとき最大値を正しく求められない","0を比較できない","必ず無限ループになる"],answer:1,explain:"最大を0で始めると、負の数はどれも0より大きくありません。そのため最大が0のままになります。",trace:"最大 = 0\n-8 > 0 → 偽\n-3 > 0 → 偽\n-12 > 0 → 偽\n誤った結果：0"},
+ {level:3,title:"別の解法",desc:"同じ目的でも、手順の選び方を比べよう。",code:"目的：リストの合計を求める\n方法A：合計を0にして、すべての数を順に足す\n方法B：リストの中の最大値だけを調べる",question:"合計を求められる方法は？",choices:["Aだけ","Bだけ","AとBの両方","どちらもできない"],answer:0,explain:"Aは各要素を足し合わせる方法です。Bで求められるのは最大値であり、合計ではありません。",trace:"方法A → すべて足す\n方法B → 最大値だけを探す"},
+ {level:3,title:"テストの限界",desc:"1つの例で成功しても、いつでも成功するとは限らない。",code:"最大 = data[0]\ndata = [4, 9, 2]\n各数を調べ、数 > 最大 なら最大を更新する",question:"この方法の評価として最も正しいものは？",choices:["このデータで成功すれば必ず正しい","データの順番が変わると必ず失敗する","別のデータでもテストする必要がある","繰り返しは使えない"],answer:2,explain:"このデータでは正しく動きますが、1つの例だけではすべてのケースで正しいと証明できません。負の数や1要素のリストも試します。",trace:"この例の最大値：9\n追加テスト：負の数だけ、1要素、重複値"},
+ {level:2,title:"更新する順番",desc:"変数を更新する前と後を区別しよう。",code:"数 = 4\n数 = 数 * 2\n数 = 数 - 3\n数を表示する",question:"最後の値は？",choices:["1","4","5","8"],answer:2,explain:"4を2倍すると8。そこから3を引くので5です。",trace:"4 → 8 → 5\n出力：5"},
+ {level:2,title:"負の数の判定",desc:"0は正の数でも負の数でもない。",code:"個数 = 0\ndata = [-2, 0, 3, -1]\n数 < 0 のとき個数を1増やす",question:"最後の個数は？",choices:["1","2","3","4"],answer:1,explain:"負の数は-2と-1の2個です。0は負の数ではありません。",trace:"-2 → 1\n0 → 1\n3 → 1\n-1 → 2"},
+ {level:2,title:"入れ子の条件",desc:"条件の中に別の条件がある。",code:"数 = 12\nもし 数 > 5 なら：\n  もし 数 % 2 == 0 なら：\n    結果 = 2\n  そうでなければ：\n    結果 = 1\nそうでなければ：\n  結果 = 0",question:"結果は？",choices:["0","1","2","12"],answer:2,explain:"12は5より大きく、2で割り切れます。内側の条件も正しいため結果は2です。",trace:"12 > 5 → 真\n12 % 2 == 0 → 真\n結果 = 2"},
+ {level:2,title:"ループの回数",desc:"2重ループの実行回数を数えよう。",code:"回数 = 0\n外側を3回繰り返す：\n  内側を2回繰り返す：\n    回数 = 回数 + 1",question:"回数はいくつ？",choices:["3","5","6","9"],answer:2,explain:"外側の1回につき内側が2回動きます。3×2で合計6回です。",trace:"外側1回目：2回\n外側2回目：2回\n外側3回目：2回\n合計：6回"},
+ {level:3,title:"累積合計",desc:"毎回の合計をリストに保存する。",code:"合計 = 0\n結果 = []\ndata = [2, 3, 1]\n各数について：\n  合計 = 合計 + 数\n  結果に合計を追加する",question:"最後の結果は？",choices:["[2, 3, 1]","[2, 5, 6]","[6, 5, 2]","[2, 3, 6]"],answer:1,explain:"累積合計は、最初に2、次に2+3=5、最後に5+1=6です。",trace:"合計0 → 2、結果[2]\n合計2 → 5、結果[2,5]\n合計5 → 6、結果[2,5,6]"},
+ {level:3,title:"重複を除く",desc:"同じ数が出てきたとき、追加するか判断しよう。",code:"結果 = []\ndata = [2, 2, 5]\nまだ結果にない数だけ追加する",question:"最後の結果は？",choices:["[2, 2, 5]","[2, 5]","[5]","[2, 2]"],answer:1,explain:"最初の2は追加します。2回目の2はすでにあるので追加しません。5は追加します。",trace:"2 → [2]\n2 → すでにあるのでそのまま\n5 → [2, 5]"},
+ {level:3,title:"境界値を探す",desc:"条件の「以上」と「より大きい」の違いを調べる。",code:"結果 = []\ndata = [4, 5, 6]\n数 > 5 のとき結果に追加する",question:"どのリストができる？",choices:["[4, 5, 6]","[5, 6]","[6]","[]"],answer:2,explain:"5より大きいのは6だけです。5そのものは条件を満たしません。",trace:"4 > 5 → 偽\n5 > 5 → 偽\n6 > 5 → 真\n結果：[6]"},
+ {level:3,title:"最初に見つかった数",desc:"見つけた後も探し続けるかを考える。",code:"data = [3, 8, 4, 10]\n最初に5より大きい数を見つけたら記録する",question:"最初に見つかる数は？",choices:["3","8","4","10"],answer:1,explain:"3は条件を満たしません。8が最初に5より大きい数です。",trace:"3 → 条件外\n8 → 条件を満たす、記録\n答え：8"},
+ {level:3,title:"空のリスト",desc:"データが1個もない場合を考えよう。",code:"合計 = 0\ndata = []\n各数を合計に足す",question:"処理後の合計は？",choices:["0","1","エラーになるとは限らず必ず1","決められない"],answer:0,explain:"調べる数がないので、足し算は1回も行われません。初期値の0が残ります。",trace:"初期値：0\nループ：0回\n結果：0"},
+ {level:3,title:"1つのデータ",desc:"最初の値を初期値にする方法を確認しよう。",code:"data = [-7]\n最大 = data[0]\n各数が最大より大きければ更新する",question:"最終的な最大値は？",choices:["0","-7","7","エラー"],answer:1,explain:"リストには-7が1つだけです。最大を最初の要素で初期化しているので、答えは-7です。",trace:"最大 = -7\n-7 > -7 → 偽\n最大 = -7"},
+ {level:3,title:"処理回数の比較",desc:"データ数が増えたときの処理回数を比較する。",code:"方法A：リストを1回だけ順番に調べる\n方法B：リストの各要素について、もう一度リスト全体を調べる",question:"データが100個あるとき、基本的に処理回数が少ないのは？",choices:["方法A","方法B","必ず同じ","情報が足りず比較できない"],answer:0,explain:"方法Aはおよそ100回、方法Bはおよそ100×100=10000回の確認になります。細かい命令数は別として、増え方に大きな差があります。",trace:"方法A：n回程度\n方法B：n×n回程度\nn=100なら100回程度と10000回程度"},
+ {level:3,title:"バグを見つける入力",desc:"間違いを表面化させるテストデータを選ぼう。",code:"バグのある処理：\n最大 = 0\n各数について、数 > 最大 なら最大を更新する",question:"このバグを見つけやすいデータは？",choices:["[1, 4, 9]","[3, 3, 3]","[-8, -3, -12]","[0, 5, 2]"],answer:2,explain:"負の数だけのデータでは、最大が0のままになるため、正しい最大値と違う結果になります。",trace:"入力 [-8,-3,-12]\n誤った結果：0\n正しい結果：-3"},
+ {level:3,title:"並べ替えと位置",desc:"並べ替えた後の位置は元の位置と同じとは限らない。",code:"data = [9, 2, 7]\n小さい順に並べ替える\n先頭の要素を表示する",question:"表示される数は？",choices:["9","2","7","18"],answer:1,explain:"小さい順に並べると[2, 7, 9]になります。先頭は2です。",trace:"[9,2,7] → [2,7,9]\n先頭：2"},
+ {level:3,title:"条件を組み合わせる",desc:"ANDは両方の条件が正しい必要がある。",code:"数 = 7\nもし 数 >= 5 かつ 数 < 10 なら：\n  結果 = 1\nそうでなければ：\n  結果 = 0",question:"結果は？",choices:["0","1","5","10"],answer:1,explain:"7は5以上であり、10未満でもあります。両方の条件が正しいため結果は1です。",trace:"7 >= 5 → 真\n7 < 10 → 真\n真 AND 真 → 真"},
+ {level:3,title:"ORの条件",desc:"ORは少なくとも片方が正しければ成立する。",code:"数 = 3\nもし 数 < 0 または 数 > 5 なら：\n  結果 = 1\nそうでなければ：\n  結果 = 0",question:"結果は？",choices:["0","1","3","条件エラー"],answer:0,explain:"3は0未満ではなく、5より大きくもありません。どちらも偽なので結果は0です。",trace:"3 < 0 → 偽\n3 > 5 → 偽\n偽 OR 偽 → 偽"},
+ {level:3,title:"一般化できる方法",desc:"特定のデータだけに通用する方法を見抜こう。",code:"目的：リストの最大値を求める\n方法A：最大 = 0 から始める\n方法B：最大 = 最初の要素から始める",question:"負の数も含む一般的なリストに対して、より適切なのは？",choices:["Aだけ","B。ただし空リストへの対応は別に考える","AとBは必ず同じ","どちらもリストを調べない"],answer:1,explain:"最大を0にすると、すべて負の数の場合に失敗します。最初の要素から始めれば負の数にも対応できます。ただし空リストでは最初の要素がないため、別の処理が必要です。",trace:"A：[-8,-3] → 最大0のまま\nB：[-8,-3] → 最大-3\n空リストの扱いは別途必要"},
+ {level:3,title:"入れ子ループの合計",desc:"内側のループが何回ずつ動くか追跡する。",code:"合計 = 0\n外側：2回\n  内側：3回\n    合計 = 合計 + 1",question:"最後の合計は？",choices:["2","3","5","6"],answer:3,explain:"外側の1回ごとに内側が3回動きます。2×3で6回、合計は6です。",trace:"1回目の外側：3加算\n2回目の外側：3加算\n合計：6"},
+ {level:3,title:"条件で更新する最大値",desc:"最大値が更新されるタイミングを追う。",code:"最大 = 4\ndata = [2, 9, 7, 3]\n数 > 最大 のとき最大を更新する",question:"最終的な最大値は？",choices:["4","7","9","21"],answer:2,explain:"2は4より小さいため変化なし。9で最大が9になり、その後の7と3では変化しません。",trace:"開始：4\n2 → 4\n9 → 9\n7 → 9\n3 → 9"},
+ {level:3,title:"順番が重要な処理",desc:"データを加工してから条件を調べる場合を考える。",code:"結果 = []\ndata = [2, 4, 6]\n各数を2倍にしてから、10より大きい場合だけ追加する",question:"結果は？",choices:["[4, 8, 12]","[12]","[6]","[]"],answer:1,explain:"2倍した値は4、8、12です。このうち10より大きいのは12だけです。",trace:"2 → 4 → 追加しない\n4 → 8 → 追加しない\n6 → 12 → 追加\n結果：[12]"},
+ {level:3,title:"数える処理の修正",desc:"個数を増やす場所に注意しよう。",code:"個数 = 0\ndata = [6, 1, 7]\n各数について：\n  もし 数 > 5 なら個数 = 個数 + 1",question:"正しい個数は？",choices:["0","1","2","3"],answer:2,explain:"6と7の2つが5より大きいので、個数は2です。",trace:"6 → 個数1\n1 → 変化なし\n7 → 個数2"},
+ {level:3,title:"テストケースの選択",desc:"境界のバグを発見するデータを選ぶ。",code:"本来の条件：数が5以上なら追加する\n実装された条件：数 > 5 なら追加する",question:"この違いを最も直接的に見つける入力は？",choices:["[1, 2, 3]","[6, 7, 8]","[5]","[-1, -2]"],answer:2,explain:"5以上と5より大きいの違いは、ちょうど5のときに現れます。",trace:"正しい条件：5 >= 5 → 追加\n誤った条件：5 > 5 → 追加しない"},
+ {level:3,title:"効率と正しさ",desc:"速いことと正しいことは別々に評価する。",code:"方法A：1回のループで最大値を探す\n方法B：並べ替えて最後の値を取る",question:"最も正しい説明は？",choices:["AもBも、実装が正しければ最大値を求められる","Aは必ず間違い","Bは必ず間違い","速い方ならテストは不要"],answer:0,explain:"どちらも正しく実装すれば最大値を求められます。ただし、必要な処理量や実装の注意点は異なります。",trace:"A：最大値を順に更新\nB：並べ替えた後に最大値を取得\n正しさと効率を分けて評価する"}
+];
+
+const KEY="logical34";
+let state={};
+try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){state={};}
+let done=state.done||[],savedBlocks=state.blocks||{};
+let projects=state.projects||[{id:"p1",name:"はじめての研究",data:[4,9,2,7,5],blocks:[]}];
+let bugSaved=state.bugs||{};
+let activeProjectId=state.activeProjectId||projects[0].id;
+let predictionScore=state.predictionScore||0,predictionCombo=state.predictionCombo||0;
+let predictionAnswered=state.predictionAnswered||[];
+let mode="stage",currentStage=1,currentBug=0,blocks=[],inputData=[4,9,2,7,5];
+let predictIndex=Math.max(0,Math.min(predictionQuestions.length-1,Number(state.predictIndex)||0));
+let selectedAnswer=-1,hasChecked=false;
+
+function save(){
+ try{
+  localStorage.setItem(KEY,JSON.stringify({
+   done,savedBlocks:undefined,blocks:savedBlocks,projects,bugs:bugSaved,
+   activeProjectId,predictionScore,predictionCombo,predictionAnswered,predictIndex
+  }));
+ }catch(e){console.warn("保存できませんでした",e)}
+}
+function showNotice(t,c=""){ $("notice").textContent=t;$("notice").className=c}
+function project(){return projects.find(p=>p.id===activeProjectId)||projects[0]}
+function stage(id){return stages.find(s=>s.id===Number(id))||stages[0]}
+function renderProgress(){$("progressTag").textContent=done.length+" / "+stages.length+" クリア"}
+function renderStageList(){
+ $("stageList").innerHTML="";
+ stages.filter(s=>$("stageFilter").value==="all"||String(s.difficulty)===$("stageFilter").value).forEach(s=>{
+  const b=document.createElement("button");
+  b.className="stage-item"+(mode==="stage"&&s.id===currentStage?" active":"")+(done.includes(s.id)?" done":"");
+  b.textContent=(done.includes(s.id)?"✓ ":"")+s.name;
+  b.onclick=()=>loadStage(s.id);$("stageList").appendChild(b);
+ });
+ renderProgress();
+}
+function renderBugList(){
+ $("debugList").innerHTML="";
+ bugs.forEach((b,i)=>{
+  const el=document.createElement("button");el.className="stage-item";
+  el.textContent=(i+1)+". "+b.name;el.onclick=()=>loadBug(i);$("debugList").appendChild(el);
+ });
+}
+function renderProjectList(){
+ $("projectSelect").innerHTML="";
+ projects.forEach(p=>{const o=document.createElement("option");o.value=p.id;o.textContent=p.name;$("projectSelect").appendChild(o)});
+ $("projectSelect").value=activeProjectId;$("projectName").value=project().name;
+}
+function defaults(type){
+ const m={SET:["合計","0"],IF:["","数 > 5"],ELSE:["",""],FOR:["数","data"],ADD:["結果","数"],OUTPUT:["","合計"]};
+ return {type,name:m[type][0],expr:m[type][1],indent:0};
+}
+function saveCurrent(){
+ if(mode==="stage")savedBlocks["s"+currentStage]=clone(blocks);
+ if(mode==="free"){project().blocks=clone(blocks);project().data=clone(inputData)}
+ if(mode==="debug")bugSaved["b"+currentBug]=clone(blocks);
+ save();
+}
+function knownNames(){
+ const n=["data","target"];
+ blocks.forEach(b=>{if(["SET","ADD","FOR"].includes(b.type)&&b.name&&!n.includes(b.name))n.push(b.name)});
+ return n;
+}
+function knownLists(){
+ const n=["data"];
+ blocks.forEach(b=>{
+  if(b.type==="ADD"&&b.name&&!n.includes(b.name))n.push(b.name);
+  if(b.type==="SET"&&b.name&&String(b.expr).trim().startsWith("[")&&!n.includes(b.name))n.push(b.name);
+ });
+ return n;
+}
+function addChoice(parent,input,choices,label){
+ const s=document.createElement("select");s.className="suggestion-select";s.setAttribute("aria-label",label);
+ const first=document.createElement("option");first.value="";first.textContent="既存のものから選ぶ…";s.appendChild(first);
+ [...new Set(choices)].forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;s.appendChild(o)});
+ s.onchange=()=>{if(!s.value)return;input.value=s.value;input.dispatchEvent(new Event("input",{bubbles:true}));s.value="";input.focus()};
+ parent.appendChild(s);
+}
+function renderBlocks(){
+ const area=$("blockArea");area.innerHTML="";
+ if(!blocks.length){area.textContent="ブロックがありません。上から命令を追加してください。";return}
+ blocks.forEach((b,i)=>{
+  const card=document.createElement("div");card.className="block "+b.type;card.style.marginLeft=Math.min(7,b.indent)*13+"px";
+  const h=document.createElement("h3");h.textContent=(i+1)+". "+typeNames[b.type];card.appendChild(h);
+  const head=document.createElement("div");head.className="block-head";
+  const tw=document.createElement("div"),tl=document.createElement("label"),ts=document.createElement("select");tl.textContent="命令の種類";
+  Object.keys(typeNames).forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=typeNames[t];ts.appendChild(o)});
+  ts.value=b.type;
+  ts.onchange=()=>{const ind=b.indent;blocks[i]=defaults(ts.value);blocks[i].indent=ind;renderBlocks();saveCurrent()};
+  tw.append(tl,ts);
+  const ew=document.createElement("div"),el=document.createElement("label"),ei=document.createElement("input");
+  el.textContent=b.type==="IF"?"条件":b.type==="FOR"?"調べるデータ":"値・計算式";
+  ei.value=b.expr||"";ei.placeholder=b.type==="IF"?"例：数 > 5":b.type==="FOR"?"例：data":"例：合計";ei.autocomplete="off";
+  ei.addEventListener("input",()=>{blocks[i].expr=ei.value;saveCurrent()});ew.append(el,ei);
+  if(b.type==="FOR")addChoice(ew,ei,knownLists(),"リスト候補");
+  head.append(tw,ew);card.appendChild(head);
+  if(["SET","FOR","ADD"].includes(b.type)){
+   const nw=document.createElement("div"),nl=document.createElement("label"),ni=document.createElement("input");
+   nl.textContent=b.type==="FOR"?"取り出した数字の名前":b.type==="ADD"?"追加先のリスト名":"保存する名前";
+   ni.value=b.name||"";ni.placeholder=b.type==="FOR"?"例：数":b.type==="ADD"?"例：結果":"例：合計";
+   ni.oninput=()=>{blocks[i].name=ni.value;saveCurrent()};nw.append(nl,ni);
+   addChoice(nw,ni,knownNames().filter(n=>n!=="data"&&n!=="target"),"変数名候補");card.appendChild(nw);
+  }
+  const note=document.createElement("p");note.className="help";note.textContent=typeHelp[b.type];card.appendChild(note);
+  const tools=document.createElement("div");tools.className="block-tools";
+  function addTool(text,fn){const btn=document.createElement("button");btn.textContent=text;btn.onclick=fn;tools.appendChild(btn)}
+  addTool("↑",()=>move(i,-1));addTool("↓",()=>move(i,1));
+  addTool("中に入れる",()=>{if(i>0){blocks[i].indent=Math.min(7,blocks[i].indent+1);renderBlocks();saveCurrent()}});
+  addTool("外に出す",()=>{blocks[i].indent=Math.max(0,blocks[i].indent-1);renderBlocks();saveCurrent()});
+  addTool("複製",()=>{blocks.splice(i+1,0,clone(b));renderBlocks();saveCurrent()});
+  addTool("削除",()=>{blocks.splice(i,1);renderBlocks();saveCurrent()});
+  card.appendChild(tools);area.appendChild(card);
+ });
+}
+function move(i,d){const j=i+d;if(j<0||j>=blocks.length)return;[blocks[i],blocks[j]]=[blocks[j],blocks[i]];renderBlocks();saveCurrent()}
+function range(a,b){const r=[];for(let i=Number(a);i<Number(b)&&r.length<300;i++)r.push(i);return r}
+function evaluate(expr,vars){
+ const text=String(expr==null?"":expr).trim();
+ if(!text)throw Error("空の入力欄があります。値や条件を入力してください。");
+ return new Function("vars","range","Math","with(vars){return ("+text+");}")(vars,range,Math);
+}
+
+/* ELSEの中にも命令を正しく入れられるようにする */
+function buildTree(list){
+ const root={children:[]},stack=[{indent:-1,node:root}];
+ list.forEach((b,index)=>{
+  const node={...b,index,children:[],elseChildren:[]};
+  while(stack.length>1&&stack[stack.length-1].indent>=b.indent)stack.pop();
+  const parent=stack[stack.length-1].node;
+  if(b.type==="ELSE"){
+   const prev=parent.children[parent.children.length-1];
+   if(prev&&prev.type==="IF"&&prev.indent===b.indent){
+    prev.elseChildren=node.children;
+    stack.push({indent:b.indent,node:{children:prev.elseChildren}});
+   }else{
+    parent.children.push(node);
+    stack.push({indent:b.indent,node});
+   }
+  }else{
+   parent.children.push(node);
+   if(["IF","FOR"].includes(b.type))stack.push({indent:b.indent,node});
+  }
+ });
+ return root.children;
+}
+function execute(data,targetValue){
+ const vars={data:clone(data),target:targetValue===undefined?9:targetValue,合計:0,結果:[]};
+ const output=[],trace=[];let steps=0;
+ function run(nodes){
+  for(const b of nodes){
+   if(++steps>1500)throw Error("命令が多すぎます。無限ループを確認してください。");
+   trace.push(steps+". "+typeNames[b.type]+" "+(b.expr||""));
+   if(b.type==="SET"){
+    if(!b.name)throw Error("変数名を入力してください。");
+    vars[b.name]=evaluate(b.expr,vars);
+   }else if(b.type==="ADD"){
+    if(!b.name)throw Error("追加先のリスト名を入力してください。");
+    if(!Array.isArray(vars[b.name]))vars[b.name]=[];
+    vars[b.name].push(evaluate(b.expr,vars));
+   }else if(b.type==="OUTPUT"){
+    output.push(evaluate(b.expr,vars));
+   }else if(b.type==="IF"){
+    if(evaluate(b.expr,vars))run(b.children);else run(b.elseChildren||[]);
+   }else if(b.type==="FOR"){
+    if(!b.name)throw Error("取り出した数字の名前を入力してください。");
+    const values=evaluate(b.expr,vars);
+    if(values==null||typeof values[Symbol.iterator]!=="function")throw Error("調べるデータにはリストを指定してください。");
+    const old=vars[b.name];let count=0;
+    for(const v of values){
+     if(++count>200)throw Error("繰り返し回数が多すぎます。");
+     vars[b.name]=v;run(b.children);
+    }
+    if(old===undefined)delete vars[b.name];else vars[b.name]=old;
+   }
+  }
+ }
+ run(buildTree(blocks));return {vars,output,trace,steps};
+}
+function equal(a,b){
+ if(Array.isArray(a)&&Array.isArray(b))return a.length===b.length&&a.every((x,i)=>equal(x,b[i]));
+ return Object.is(a,b);
+}
+function stringify(x){if(x===undefined)return "未定義";try{return JSON.stringify(x)}catch(e){return String(x)}}
+function expected(s,d,t){return s.extraFn?s.extraFn(d):targetFunctions[s.kind](d,t)}
+function cases(){
+ if(mode==="free")return [{data:clone(inputData),target:9}];
+ if(mode==="debug")return [
+  {data:[-4,8,-2,11,0],target:9},
+  {data:[5,1,9,-8],target:9},
+  {data:[-9,-3,-6],target:9}
+ ];
+ const s=stage(currentStage);
+ return [
+  {data:clone(s.data),target:s.target},
+  {data:[-8,3,14,0,6],target:s.target},
+  {data:[2,2,9,-1,5,12],target:s.target}
+ ];
+}
+function expectedBug(k,d){
+ if(k==="sum")return d.reduce((a,b)=>a+b,0);
+ if(k==="evens")return d.filter(x=>x%2===0);
+ if(k==="max")return d.length?Math.max(...d):null;
+ if(k==="gte5")return d.filter(x=>x>=5);
+ if(k==="reverse")return [...d].reverse();
+ return null;
+}
+function runTests(){
+ let passed=0,totalSteps=0,last=null;const cs=cases(),details=[];
+ cs.forEach((c,i)=>{
+  try{
+   const r=execute(c.data,c.target);last=r;totalSteps+=r.steps;
+   const actual=r.output.length?r.output[r.output.length-1]:undefined;
+   let ans=actual,ok=true;
+   if(mode==="stage"){ans=expected(stage(currentStage),c.data,c.target);ok=equal(actual,ans)}
+   if(mode==="debug"){ans=expectedBug(bugs[currentBug].kind,c.data);ok=equal(actual,ans)}
+   if(ok)passed++;
+   details.push((ok?"✓ 成功":"✗ 失敗")+" テスト"+(i+1)+"\nデータ："+stringify(c.data)+"\n出力："+stringify(actual)+(mode==="free"?"":"\n正解："+stringify(ans)));
+  }catch(e){details.push("✗ テスト"+(i+1)+"\n"+e.message)}
+ });
+ $("passedTests").textContent=passed+" / "+cs.length;
+ $("stepCount").textContent=totalSteps;
+ $("accuracy").textContent=mode==="free"?"自己評価":Math.round(passed/cs.length*100)+"%";
+ $("rank").textContent=mode==="free"?"研究中":passed===cs.length?"S":passed>=2?"B":"C";
+ $("testDetails").textContent=details.join("\n\n");
+ if(last){
+  $("output").textContent=last.output.map(stringify).join("\n")||"出力がありません。";
+  $("variables").textContent=Object.keys(last.vars).map(k=>k+" = "+stringify(last.vars[k])).join("\n");
+  $("trace").textContent=last.trace.join("\n");
+  $("variableCount").textContent=Object.keys(last.vars).length;
+  $("outputCount").textContent=last.output.length;
+ }
+ if(mode==="stage"&&passed===cs.length&&!done.includes(currentStage)){
+  done.push(currentStage);renderStageList();
+ }
+ showNotice(passed===cs.length?"すべてのテストに成功しました！":"出力と実行記録を確認してみましょう。",passed===cs.length?"success":"warning");
+ saveCurrent();save();
+}
+function resetResults(){
+ ["output","variables","trace","testDetails"].forEach(id=>$(id).textContent="まだ実行していません。");
+ $("passedTests").textContent="0 / 0";$("stepCount").textContent="0";$("accuracy").textContent="—";
+ $("rank").textContent="未評価";$("variableCount").textContent="0";$("outputCount").textContent="0";
+}
+function setMode(m){
+ mode=m;
+ document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode===m));
+ $("normalView").style.display=m==="predict"?"none":"flex";
+ $("predictionView").style.display=m==="predict"?"flex":"none";
+ $("stageNav").style.display=m==="stage"?"flex":"none";
+ $("freeSettings").style.display=m==="free"?"flex":"none";
+ $("debugSettings").style.display=m==="debug"?"flex":"none";
+ $("predictionMenu").style.display=m==="predict"?"flex":"none";
+ $("freeInputArea").style.display=m==="free"?"flex":"none";
+ if(m==="stage")loadStage(currentStage);
+ if(m==="free")loadProject();
+ if(m==="debug")loadBug(currentBug);
+ if(m==="predict")renderPrediction();
+}
+
+/* 変更：解答を自動配置しない。保存済みブロックは維持する */
+function loadStage(id){
+ mode="stage";currentStage=Number(id);
+ document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("active",b.dataset.mode===mode));
+ const s=stage(id);
+ $("modeTag").textContent="課題モード";$("levelTag").textContent="STAGE "+s.id+" / "+stages.length;
+ $("taskTitle").textContent=s.name;$("taskDesc").textContent=s.desc;
+ inputData=clone(s.data);$("inputData").textContent=JSON.stringify({データ:inputData,目標値:s.target},null,2);
+ blocks=clone(savedBlocks["s"+s.id]||[]);
+ renderBlocks();resetResults();renderStageList();showNotice("ブロックを組み立てて実行してみましょう。");
+}
+function loadProject(){
+ mode="free";
+ if(!projects.length){projects=[{id:"p1",name:"はじめての研究",data:[4,9,2,7,5],blocks:[]}];activeProjectId="p1"}
+ const p=project();blocks=clone(p.blocks||[]);inputData=clone(p.data||[4,9,2,7,5]);
+ $("modeTag").textContent="自由研究";$("levelTag").textContent="自由制作";
+ $("taskTitle").textContent=p.name;$("taskDesc").textContent="好きなアルゴリズムを作って実験しよう。";
+ $("inputData").textContent=JSON.stringify({データ:inputData},null,2);
+ $("customData").value=inputData.join(", ");renderProjectList();renderBlocks();resetResults();
+}
+function loadBug(i){
+ mode="debug";currentBug=i;const b=bugs[i];blocks=clone(bugSaved["b"+i]||b.blocks);
+ inputData=[-4,8,-2,11,0];
+ $("modeTag").textContent="バグ発見";$("levelTag").textContent="チャレンジ "+(i+1);
+ $("taskTitle").textContent=b.name;$("taskDesc").textContent=b.desc;
+ $("inputData").textContent=JSON.stringify({データ:inputData},null,2);
+ renderBlocks();resetResults();renderBugList();showNotice("ブロックを調べて間違いを修正してみましょう。");
+}
+
+/* 開発者デバッグ：期待される出力と参考プログラム */
+function getReferenceProgram(s){
+ const refs={
+  max:
+   "最大 = data[0]\n"+
+   "dataの各数について：\n"+
+   "  もし 数 > 最大 なら：\n"+
+   "    最大 = 数\n"+
+   "最大を出力する",
+  min:
+   "最小 = data[0]\n"+
+   "dataの各数について：\n"+
+   "  もし 数 < 最小 なら：\n"+
+   "    最小 = 数\n"+
+   "最小を出力する",
+  sum:
+   "合計 = 0\n"+
+   "dataの各数について：\n"+
+   "  合計 = 合計 + 数\n"+
+   "合計を出力する",
+  avg:
+   "合計 = 0\n"+
+   "dataの各数について：\n"+
+   "  合計 = 合計 + 数\n"+
+   "平均 = 合計 / dataの個数\n"+
+   "平均を出力する",
+  evencount:
+   "個数 = 0\n"+
+   "dataの各数について：\n"+
+   "  もし 数 % 2 == 0 なら：\n"+
+   "    個数 = 個数 + 1\n"+
+   "個数を出力する",
+  oddcount:
+   "個数 = 0\n"+
+   "dataの各数について：\n"+
+   "  もし 数 % 2 != 0 なら：\n"+
+   "    個数 = 個数 + 1\n"+
+   "個数を出力する",
+  positive:
+   "結果 = []\n"+
+   "dataの各数について：\n"+
+   "  もし 数 > 0 なら：\n"+
+   "    結果に数を追加する\n"+
+   "結果を出力する",
+  negative:
+   "結果 = []\n"+
+   "dataの各数について：\n"+
+   "  もし 数 < 0 なら：\n"+
+   "    結果に数を追加する\n"+
+   "結果を出力する",
+  gte5:
+   "結果 = []\n"+
+   "dataの各数について：\n"+
+   "  もし 数 >= 5 なら：\n"+
+   "    結果に数を追加する\n"+
+   "結果を出力する",
+  counttarget:
+   "個数 = 0\n"+
+   "dataの各数について：\n"+
+   "  もし 数 == target なら：\n"+
+   "    個数 = 個数 + 1\n"+
+   "個数を出力する",
+  contains:
+   "見つかった = false\n"+
+   "dataの各数について：\n"+
+   "  もし 数 == target なら：\n"+
+   "    見つかった = true\n"+
+   "見つかったを出力する",
+  firsteven:
+   "結果 = null\n"+
+   "dataの各数について：\n"+
+   "  もし 数 % 2 == 0 かつ 結果 == null なら：\n"+
+   "    結果 = 数\n"+
+   "結果を出力する",
+  reverse:
+   "結果 = []\n"+
+   "dataを逆の順番で調べる\n"+
+   "  結果に数を追加する\n"+
+   "結果を出力する",
+  unique:
+   "結果 = []\n"+
+   "dataの各数について：\n"+
+   "  もし 結果に数が含まれないなら：\n"+
+   "    結果に数を追加する\n"+
+   "結果を出力する",
+  sort:
+   "結果 = dataをコピーしたリスト\n"+
+   "結果を小さい順に並べ替える\n"+
+   "結果を出力する",
+  double:
+   "結果 = []\n"+
+   "dataの各数について：\n"+
+   "  結果に数 * 2 を追加する\n"+
+   "結果を出力する",
+  square:
+   "結果 = []\n"+
+   "dataの各数について：\n"+
+   "  結果に数 * 数 を追加する\n"+
+   "結果を出力する",
+  abs:
+   "結果 = []\n"+
+   "dataの各数について：\n"+
+   "  結果に絶対値(数)を追加する\n"+
+   "結果を出力する",
+  maxindex:
+   "最大 = data[0]\n"+
+   "位置 = 0\n"+
+   "dataの各数と位置について：\n"+
+   "  もし 数 > 最大 なら：\n"+
+   "    最大 = 数\n"+
+   "    位置 = 現在の位置\n"+
+   "位置を出力する",
+  secondmax:
+   "最大 = dataの中の最大値\n"+
+   "2番目 = 最大とは異なる数のうち最大の数\n"+
+   "2番目を出力する"
+ };
+
+ if(refs[s.kind])return refs[s.kind];
+
+ const extraRefs={
+  extra0:"dataの各数について、数 % 3 == 0 なら結果に追加する",
+  extra1:"dataの各数について、0 <= 数 かつ 数 <= 10 なら結果に追加する",
+  extra2:"2番目以降の数から、直前の数を引いて結果に追加する",
+  extra3:"合計 = 0。各数を合計に加え、そのたびに合計を結果に追加する",
+  extra4:"dataの各数を文字に変換して結果に追加する",
+  extra5:"dataに同じ数があるかを調べ、真偽値を出力する",
+  extra6:"dataのすべての数が0より大きいか調べる",
+  extra7:"dataに0未満の数が1つでもあるか調べる",
+  extra8:"最大値 - 最小値を出力する",
+  extra9:"dataを小さい順に並べ、中央の位置の数を出力する"
+ };
+
+ return extraRefs[s.kind]||
+  "このステージの参考プログラムは未登録です。\n"+
+  "期待される出力とテスト結果を参考に、解法を考えてください。";
+}
+
+$("developerToggle").onclick=()=>{
+ const panel=$("developerPanel");
+ const opening=panel.style.display==="none";
+
+ panel.style.display=opening?"flex":"none";
+ $("developerToggle").textContent=opening?"正解を隠す":"正解を表示";
+
+ if(!opening)return;
+
+ if(mode==="stage"){
+  const s=stage(currentStage);
+  const cs=[
+   {data:clone(s.data),target:s.target},
+   {data:[-8,3,14,0,6],target:s.target},
+   {data:[2,2,9,-1,5,12],target:s.target}
+  ];
+
+  $("developerExpected").textContent=cs.map((c,i)=>{
+   return "テスト"+(i+1)+
+    "\nデータ："+stringify(c.data)+
+    "\n期待される出力："+stringify(expected(s,c.data,c.target));
+  }).join("\n\n");
+
+  $("developerExample").textContent=getReferenceProgram(s);
+
+ }else if(mode==="debug"){
+  const b=bugs[currentBug];
+  const cs=[
+   [-4,8,-2,11,0],
+   [5,1,9,-8],
+   [-9,-3,-6]
+  ];
+
+  $("developerExpected").textContent=cs.map((d,i)=>{
+   return "テスト"+(i+1)+
+    "\nデータ："+stringify(d)+
+    "\n正しい出力："+stringify(expectedBug(b.kind,d));
+  }).join("\n\n");
+
+  $("developerExample").textContent=
+   "このチャレンジでは、現在のプログラムと正しい出力を比較して、"+
+   "どの命令を修正すればよいか考えてください。";
+
+ }else{
+  $("developerExpected").textContent=
+   "自由研究モードでは、作品ごとに目的が異なるため、"+
+   "共通の正解は設定されていません。";
+  $("developerExample").textContent=
+   "自分で作ったプログラムを実行し、出力・変数・実行記録を確認してください。";
+ }
+};
+
+/* 予測モード */
+function renderPrediction(){
+ $("predictionScore").textContent=predictionScore;
+ $("predictionCombo").textContent=predictionCombo;
+ $("predictionAnsweredCount").textContent=predictionAnswered.length;
+ const q=predictionQuestions[predictIndex];
+ $("predictLevel").textContent=["","基礎","中級","応用"][q.level]||"応用";
+ $("predictNumber").textContent="問題 "+(predictIndex+1)+" / "+predictionQuestions.length;
+ $("predictionProgressBar").style.width=((predictIndex+1)/predictionQuestions.length*100)+"%";
+ $("predictTitle").textContent=q.title;$("predictDesc").textContent=q.desc;
+ $("predictCode").textContent=q.code;$("predictQuestion").textContent=q.question;
+ $("predictChoices").innerHTML="";selectedAnswer=-1;hasChecked=false;
+ q.choices.forEach((c,i)=>{
+  const b=document.createElement("button");b.className="choice";
+  const letter=document.createElement("span");letter.className="choice-letter";letter.textContent=["A","B","C","D"][i];
+  const label=document.createElement("span");label.textContent=c;b.append(letter,label);
+  b.onclick=()=>{
+   if(hasChecked)return;
+   selectedAnswer=i;
+   Array.from($("predictChoices").children).forEach((el,j)=>el.classList.toggle("selected",j===i));
+   $("checkPrediction").disabled=false;
+  };
+  $("predictChoices").appendChild(b);
+ });
+ $("predictFeedback").style.display="none";
+ $("checkPrediction").disabled=true;$("nextPrediction").disabled=true;
+ $("retryPrediction").textContent="選び直す";
+}
+function checkPrediction(){
+ if(selectedAnswer<0||hasChecked)return;
+ hasChecked=true;
+ const q=predictionQuestions[predictIndex],correct=selectedAnswer===q.answer;
+ if(correct)predictionScore++;
+ predictionCombo=correct?predictionCombo+1:0;
+ if(!predictionAnswered.includes(predictIndex))predictionAnswered.push(predictIndex);
+ Array.from($("predictChoices").children).forEach((el,i)=>{
+  el.disabled=true;
+  if(i===q.answer)el.classList.add("correct");
+  else if(i===selectedAnswer)el.classList.add("wrong");
+ });
+ $("feedbackTitle").textContent=correct?"正解！":"不正解。考え方を確認しよう";
+ $("feedbackTitle").className=correct?"success":"error";
+ $("feedbackText").textContent=q.explain;
+ $("feedbackTrace").textContent=q.trace;
+ $("predictFeedback").style.display="flex";
+ $("nextPrediction").disabled=false;$("checkPrediction").disabled=true;
+ $("predictionScore").textContent=predictionScore;
+ $("predictionCombo").textContent=predictionCombo;
+ $("predictionAnsweredCount").textContent=predictionAnswered.length;
+ save();
+}
+function nextPrediction(){
+ if(predictIndex<predictionQuestions.length-1)predictIndex++;
+ else predictIndex=0;
+ save();renderPrediction();
+}
+$("checkPrediction").onclick=checkPrediction;
+$("nextPrediction").onclick=nextPrediction;
+$("retryPrediction").onclick=()=>{
+ if(hasChecked){renderPrediction();return}
+ selectedAnswer=-1;
+ Array.from($("predictChoices").children).forEach(el=>el.classList.remove("selected"));
+ $("checkPrediction").disabled=true;
+};
+$("resetPrediction").onclick=()=>{
+ if(!confirm("予測モードの記録をリセットしますか？"))return;
+ predictionScore=0;predictionCombo=0;predictionAnswered=[];predictIndex=0;save();renderPrediction();
+};
+
+/* 既存のボタン機能 */
+$("addBlockBtn").onclick=()=>{blocks.push(defaults($("newBlockType").value));renderBlocks();saveCurrent()};
+$("clearBlocksBtn").onclick=()=>{
+ if(confirm("ブロックをすべて削除しますか？")){blocks=[];renderBlocks();saveCurrent();resetResults()}
+};
+$("runBtn").onclick=()=>{try{runTests()}catch(e){showNotice("エラー："+e.message,"error")}};
+$("resetRunBtn").onclick=resetResults;
+$("saveBtn").onclick=()=>{saveCurrent();save();showNotice("保存しました。","success")};
+$("stageFilter").onchange=renderStageList;
+document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+$("applyDataBtn").onclick=()=>{
+ const raw=$("customData").value.trim();
+ const d=raw.split(",").map(x=>Number(x.trim()));
+ if(!raw||d.some(x=>!Number.isFinite(x))){
+  showNotice("数字をカンマで区切って入力してください。","error");return;
+ }
+ inputData=d;$("inputData").textContent=JSON.stringify({データ:d},null,2);
+ saveCurrent();resetResults();showNotice("データを更新しました。");
+};
+$("projectSelect").onchange=()=>{activeProjectId=$("projectSelect").value;loadProject();save()};
+$("newProjectBtn").onclick=()=>{
+ const p={id:"p"+Date.now(),name:"新しい研究",data:[4,9,2,7,5],blocks:[]};
+ projects.push(p);activeProjectId=p.id;loadProject();save();
+};
+$("renameBtn").onclick=()=>{
+ const n=$("projectName").value.trim();if(!n)return;
+ project().name=n;loadProject();save();
+};
+$("duplicateBtn").onclick=()=>{
+ const p=clone(project());p.id="p"+Date.now();p.name+=" のコピー";
+ projects.push(p);activeProjectId=p.id;loadProject();save();
+};
+$("deleteProjectBtn").onclick=()=>{
+ if(projects.length<=1||!confirm("この作品を削除しますか？"))return;
+ projects=projects.filter(p=>p.id!==activeProjectId);
+ activeProjectId=projects[0].id;loadProject();save();
+};
+$("resetProgressBtn").onclick=()=>{
+ if(confirm("クリア記録を消去しますか？")){
+  done=[];save();renderStageList();
+ }
+};
+
+/* 起動時：保存済みデータを読み込む */
+renderStageList();renderBugList();renderProjectList();loadStage(1);
+</script>
+</body>
+</html>
